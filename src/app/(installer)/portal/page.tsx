@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Card, CardContent, Button, Chip } from "@heroui/react";
+import Image from "next/image";
 
 interface Upload {
   id: string;
@@ -33,10 +35,7 @@ export default function PortalPage() {
       fetch("/api/uploads").then((r) => r.json()),
     ])
       .then(([meData, uploadData]) => {
-        if (!meData.installer) {
-          router.push("/login");
-          return;
-        }
+        if (!meData.installer) { router.push("/login"); return; }
         setInstaller(meData.installer);
         setUploads(uploadData.uploads || []);
       })
@@ -44,15 +43,13 @@ export default function PortalPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  if (loading) {
+  if (loading || !installer) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-default-500">Loading...</p>
       </div>
     );
   }
-
-  if (!installer) return null;
 
   const pending = uploads.filter((u) => u.status === "pending").length;
   const approved = uploads.filter((u) => u.status === "approved").length;
@@ -63,92 +60,72 @@ export default function PortalPage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold">Welcome, {installer.name}</h1>
-            <p className="text-sm text-gray-500">{installer.email}</p>
+            <p className="text-sm text-default-400">{installer.email}</p>
           </div>
           <div className="flex gap-3">
-            <Link
-              href="/portal/upload"
-              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition"
-            >
-              Upload Media
+            <Link href="/portal/upload">
+              <Button variant="solid" size="sm">Upload Media</Button>
             </Link>
-            <Link
-              href="/portal/profile"
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-            >
-              Profile
+            <Link href="/portal/profile">
+              <Button variant="bordered" size="sm">Profile</Button>
             </Link>
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto p-6">
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-5 border">
-            <p className="text-sm text-gray-500">Total Uploads</p>
-            <p className="text-3xl font-bold">{uploads.length}</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border">
-            <p className="text-sm text-gray-500">Pending Review</p>
-            <p className="text-3xl font-bold text-yellow-600">{pending}</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border">
-            <p className="text-sm text-gray-500">Approved</p>
-            <p className="text-3xl font-bold text-green-600">{approved}</p>
-          </div>
+          {[
+            { label: "Total Uploads", value: uploads.length },
+            { label: "Pending Review", value: pending, color: "warning" as const },
+            { label: "Approved", value: approved, color: "success" as const },
+          ].map((s) => (
+            <Card key={s.label} shadow="sm">
+              <CardContent className="text-center py-5">
+                <p className="text-sm text-default-500">{s.label}</p>
+                <p className="text-3xl font-bold mt-1">{s.value}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Recent uploads */}
         <h2 className="text-lg font-semibold mb-4">Your Uploads</h2>
         {uploads.length === 0 ? (
-          <div className="bg-white rounded-xl border p-8 text-center text-gray-500">
-            <p>No uploads yet.</p>
-            <Link href="/portal/upload" className="text-blue-600 underline mt-2 inline-block">
-              Upload your first media
-            </Link>
-          </div>
+          <Card shadow="sm">
+            <CardContent className="text-center py-8">
+              <p className="text-default-400">No uploads yet.</p>
+              <Link href="/portal/upload">
+                <Button variant="flat" className="mt-3">Upload your first media</Button>
+              </Link>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {uploads.map((u) => (
-              <div key={u.id} className="bg-white rounded-xl border overflow-hidden">
+              <Card key={u.id} shadow="sm">
                 <div className="h-48 bg-gray-100">
                   {u.fileType === "video" ? (
-                    <video
-                      src={u.fileUrl}
-                      className="w-full h-full object-cover"
-                      muted
-                      playsInline
-                      preload="metadata"
-                    />
+                    <video src={u.fileUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
                   ) : (
-                    <img
-                      src={u.fileUrl}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    <Image src={u.fileUrl} alt="" className="w-full h-48 object-cover" width={400} height={300} />
                   )}
                 </div>
-                <div className="p-3">
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      u.status === "approved"
-                        ? "bg-green-100 text-green-700"
-                        : u.status === "rejected"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {u.status}
-                  </span>
-                  {u.caption && (
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">{u.caption}</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(u.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
+                <CardContent className="p-3 gap-2">
+                  <div className="flex items-center justify-between">
+                    <Chip
+                      size="sm"
+                      variant="flat"
+                      color={u.status === "approved" ? "success" : u.status === "rejected" ? "danger" : "warning"}
+                    >
+                      {u.status}
+                    </Chip>
+                    <span className="text-xs text-default-400">
+                      {new Date(u.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {u.caption && <p className="text-sm text-default-500 line-clamp-2">{u.caption}</p>}
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}

@@ -147,6 +147,32 @@ export async function fetchUserPosts(
   };
 }
 
+// ==================== Resolve user ID to username ====================
+
+export interface ResolvedUser {
+  username: string;
+  full_name: string;
+  profile_pic_url: string;
+  pk: string;
+}
+
+export async function resolveUserId(userId: string): Promise<ResolvedUser | null> {
+  const res = await fetch(
+    `https://${RAPIDAPI_HOST}/user-feeds?id=${userId}`,
+    { headers }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const user = data.items?.[0]?.user;
+  if (!user?.username) return null;
+  return {
+    username: user.username,
+    full_name: user.full_name || "",
+    profile_pic_url: user.profile_pic_url || "",
+    pk: String(user.pk || userId),
+  };
+}
+
 // ==================== Hashtag feed ====================
 
 export interface HashtagPost {
@@ -157,6 +183,7 @@ export interface HashtagPost {
   like_count: number;
   comment_count: number;
   owner_id: string;
+  owner_username: string;
   timestamp: number;
   is_video: boolean;
 }
@@ -188,6 +215,7 @@ export async function fetchHashtagFeed(
       like_count: n.edge_liked_by?.count || n.edge_media_preview_like?.count || 0,
       comment_count: n.edge_media_to_comment?.count || 0,
       owner_id: String(n.owner?.id || ""),
+      owner_username: "",
       timestamp: n.taken_at_timestamp || 0,
       is_video: n.is_video || false,
     };

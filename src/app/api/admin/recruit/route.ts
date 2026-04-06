@@ -4,6 +4,7 @@ import {
   searchInstagram,
   fetchProfile,
   fetchHashtagFeed,
+  resolveUserId,
 } from "@/lib/instagram";
 
 export async function GET(req: NextRequest) {
@@ -30,6 +31,15 @@ export async function GET(req: NextRequest) {
     if (type === "hashtag") {
       const result = await fetchHashtagFeed(query, cursor);
       return NextResponse.json(result);
+    }
+
+    if (type === "resolve-user") {
+      // Resolve user ID to username
+      const user = await resolveUserId(query);
+      if (!user) {
+        return NextResponse.json({ error: "Could not resolve user" }, { status: 404 });
+      }
+      return NextResponse.json({ user });
     }
 
     // Default: keyword search (returns users + hashtags)

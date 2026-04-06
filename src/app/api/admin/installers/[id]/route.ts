@@ -25,17 +25,23 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Fetch UGC mentions if Instagram username is linked
+  // Fetch Instagram data if username is linked
   let mentions: unknown[] = [];
+  let creatorLink = null;
   if (installer.instagramUsername) {
-    mentions = await prisma.mention.findMany({
-      where: { username: installer.instagramUsername },
-      orderBy: { timestamp: "desc" },
-      take: 20,
-    });
+    [mentions, creatorLink] = await Promise.all([
+      prisma.mention.findMany({
+        where: { username: installer.instagramUsername },
+        orderBy: { timestamp: "desc" },
+        take: 20,
+      }),
+      prisma.creatorLink.findUnique({
+        where: { username: installer.instagramUsername },
+      }),
+    ]);
   }
 
-  return NextResponse.json({ installer, mentions });
+  return NextResponse.json({ installer, mentions, creatorLink });
 }
 
 // PATCH: update installer info / status

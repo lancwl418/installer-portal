@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  Modal, ModalBackdrop, ModalContainer, ModalDialog,
+  ModalHeader, ModalBody, ModalFooter,
+  TextField, Label, Input,
+  useOverlayState,
+} from "@heroui/react";
 
 interface Installer {
   id: string;
@@ -15,175 +21,213 @@ interface Installer {
   _count: { uploads: number };
 }
 
+const STATUS_TABS = [
+  { key: "all", label: "All" },
+  { key: "applied", label: "Applied" },
+  { key: "approved", label: "Approved" },
+  { key: "active", label: "Active" },
+  { key: "inactive", label: "Inactive" },
+];
+
+const statusColors: Record<string, string> = {
+  applied: "text-gray-500 bg-gray-100",
+  approved: "text-blue-600 bg-blue-50",
+  active: "text-green-600 bg-green-50",
+  inactive: "text-red-500 bg-red-50",
+};
+
 export default function AdminInstallersPage() {
   const [installers, setInstallers] = useState<Installer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  const [search, setSearch] = useState("");
+  const modalState = useOverlayState();
   const router = useRouter();
 
   function loadInstallers() {
     fetch("/api/admin/installers")
       .then((r) => {
-        if (r.status === 401) {
-          router.push("/admin/login");
-          return null;
-        }
+        if (r.status === 401) { router.push("/admin/login"); return null; }
         return r.json();
       })
-      .then((data) => {
-        if (data) setInstallers(data.installers || []);
-      })
+      .then((data) => { if (data) setInstallers(data.installers || []); })
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => {
-    loadInstallers();
-  }, []);
+  useEffect(() => { loadInstallers(); }, []);
 
-  const statusColor: Record<string, string> = {
-    applied: "bg-gray-100 text-gray-700",
-    approved: "bg-blue-100 text-blue-700",
-    active: "bg-green-100 text-green-700",
-    inactive: "bg-red-100 text-red-700",
+  const counts = {
+    all: installers.length,
+    applied: installers.filter((i) => i.status === "applied").length,
+    approved: installers.filter((i) => i.status === "approved").length,
+    active: installers.filter((i) => i.status === "active").length,
+    inactive: installers.filter((i) => i.status === "inactive").length,
   };
+
+  const filtered = installers.filter((i) => {
+    if (activeTab !== "all" && i.status !== activeTab) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (
+        i.name.toLowerCase().includes(q) ||
+        i.email.toLowerCase().includes(q) ||
+        (i.instagramUsername?.toLowerCase().includes(q) ?? false)
+      );
+    }
+    return true;
+  });
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-400">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold">Installer Management</h1>
-          <div className="flex gap-3">
-            <Link
-              href="/admin/recruit"
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-            >
-              Recruit
-            </Link>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition"
-            >
-              + Add Installer
-            </button>
-          </div>
+    <div className="p-8">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Installers</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage installer accounts and applications</p>
         </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto p-6">
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-5 border">
-            <p className="text-sm text-gray-500">Total</p>
-            <p className="text-3xl font-bold">{installers.length}</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border">
-            <p className="text-sm text-gray-500">Active</p>
-            <p className="text-3xl font-bold text-green-600">
-              {installers.filter((i) => i.status === "active").length}
-            </p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border">
-            <p className="text-sm text-gray-500">Approved</p>
-            <p className="text-3xl font-bold text-blue-600">
-              {installers.filter((i) => i.status === "approved").length}
-            </p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border">
-            <p className="text-sm text-gray-500">Applied</p>
-            <p className="text-3xl font-bold text-gray-600">
-              {installers.filter((i) => i.status === "applied").length}
-            </p>
-          </div>
+        <div className="flex gap-3">
+          <button
+            onClick={modalState.open}
+            className="px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition flex items-center gap-2"
+          >
+            + Add Installer
+          </button>
+          <Link
+            href="/admin/recruit"
+            className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            Recruit Installers
+          </Link>
         </div>
+      </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+      {/* Status tabs */}
+      <div className="flex gap-1 mb-6">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              activeTab === tab.key
+                ? "bg-gray-900 text-white"
+                : "text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            {tab.label}
+            <span className={`ml-1.5 ${activeTab === tab.key ? "text-gray-300" : "text-gray-400"}`}>
+              {counts[tab.key as keyof typeof counts]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1 max-w-md">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email, or Instagram..."
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Installer</th>
+              <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Instagram</th>
+              <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Region</th>
+              <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Uploads</th>
+              <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Joined</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filtered.length === 0 ? (
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Email</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Instagram</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Region</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Uploads</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600"></th>
+                <td colSpan={6} className="text-center py-12 text-gray-400 text-sm">
+                  {search ? "No results found" : "No installers yet. Click '+ Add Installer' to create one."}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {installers.map((inst) => (
-                <tr key={inst.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{inst.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{inst.email}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {inst.instagramUsername ? `@${inst.instagramUsername}` : "—"}
+            ) : (
+              filtered.map((inst) => (
+                <tr
+                  key={inst.id}
+                  onClick={() => router.push(`/admin/installers/${inst.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer transition"
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-500 flex-shrink-0">
+                        {inst.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{inst.name}</p>
+                        <p className="text-xs text-gray-400">{inst.email}</p>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{inst.region || "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColor[inst.status] || "bg-gray-100"}`}>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[inst.status] || "text-gray-500 bg-gray-100"}`}>
                       {inst.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{inst._count.uploads}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/installers/${inst.id}`}
-                      className="text-blue-600 hover:underline text-sm"
-                    >
-                      View
-                    </Link>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {inst.instagramUsername ? `@${inst.instagramUsername}` : <span className="text-gray-300">-</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {inst.region || <span className="text-gray-300">-</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {inst._count.uploads}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-400">
+                    {new Date(inst.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
-              ))}
-              {installers.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    No installers yet. Click &quot;+ Add Installer&quot; to create one.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </main>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {/* Create modal */}
-      {showCreate && (
-        <CreateInstallerModal
-          onClose={() => setShowCreate(false)}
-          onCreated={() => {
-            setShowCreate(false);
-            loadInstallers();
-          }}
-        />
-      )}
+      <CreateInstallerModal
+        state={modalState}
+        onCreated={() => { modalState.close(); loadInstallers(); }}
+      />
     </div>
   );
 }
 
 function CreateInstallerModal({
-  onClose,
+  state,
   onCreated,
 }: {
-  onClose: () => void;
+  state: ReturnType<typeof useOverlayState>;
   onCreated: () => void;
 }) {
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    phone: "",
-    instagramUsername: "",
-    region: "",
-    serviceArea: "",
+    name: "", email: "", password: "", phone: "",
+    instagramUsername: "", region: "", serviceArea: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -192,7 +236,6 @@ function CreateInstallerModal({
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
       const res = await fetch("/api/admin/installers", {
         method: "POST",
@@ -200,61 +243,58 @@ function CreateInstallerModal({
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to create");
-        return;
-      }
+      if (!res.ok) { setError(data.error || "Failed"); return; }
       onCreated();
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Network error"); }
+    finally { setLoading(false); }
   }
 
+  const fields = [
+    { key: "name", label: "Name", required: true },
+    { key: "email", label: "Email", type: "email", required: true },
+    { key: "password", label: "Password", type: "password", required: true },
+    { key: "phone", label: "Phone" },
+    { key: "instagramUsername", label: "Instagram Username" },
+    { key: "region", label: "Region" },
+    { key: "serviceArea", label: "Service Area" },
+  ] as const;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-bold mb-4">Add New Installer</h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {(["name", "email", "password", "phone", "instagramUsername", "region", "serviceArea"] as const).map(
-            (field) => (
-              <div key={field}>
-                <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
-                  {field === "instagramUsername" ? "Instagram Username" : field === "serviceArea" ? "Service Area" : field}
-                  {["name", "email", "password"].includes(field) && " *"}
-                </label>
-                <input
-                  type={field === "password" ? "password" : field === "email" ? "email" : "text"}
-                  value={form[field]}
-                  onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                  required={["name", "email", "password"].includes(field)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-sm"
-                />
-              </div>
-            )
-          )}
-
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 text-sm transition"
-            >
-              {loading ? "Creating..." : "Create Installer"}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal state={state}>
+      <ModalBackdrop isDismissable>
+        <ModalContainer size="lg">
+          <ModalDialog>
+            <form onSubmit={handleSubmit}>
+              <ModalHeader>Add New Installer</ModalHeader>
+              <ModalBody className="gap-3">
+                {fields.map((f) => (
+                  <TextField key={f.key} isRequired={"required" in f && f.required}>
+                    <Label>{f.label}</Label>
+                    <Input
+                      type={"type" in f ? f.type : "text"}
+                      value={form[f.key]}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    />
+                  </TextField>
+                ))}
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+              </ModalBody>
+              <ModalFooter>
+                <button type="button" onClick={state.close} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {loading ? "Creating..." : "Create Installer"}
+                </button>
+              </ModalFooter>
+            </form>
+          </ModalDialog>
+        </ModalContainer>
+      </ModalBackdrop>
+    </Modal>
   );
 }
