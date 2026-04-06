@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Installer {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  passwordHash      String
+  name              String
+  phone             String?
+  instagramUsername String?           @unique
+  region            String?
+  serviceArea       String?
+  specialties       String?
+  status            String            @default("applied")
+  contractDate      DateTime?
+  notes             String?
+  customerId        String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  uploads           InstallerUpload[]
+}
+
+model InstallerUpload {
+  id          String    @id @default(cuid())
+  installerId String
+  fileUrl     String
+  fileType    String
+  caption     String?
+  status      String    @default("pending")
+  reviewNote  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  installer   Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+}
+
+model Mention {
+  id            String    @id
+  username      String
+  timestamp     DateTime
+  mediaType     String
+  mediaUrl      String
+  thumbnailUrl  String?
+  caption       String?
+  permalink     String
+  likeCount     Int       @default(0)
+  commentsCount Int       @default(0)
+  fetchedAt     DateTime  @default(now())
+  comments      Comment[]
+}
+
+model Comment {
+  id        String   @id
+  mentionId String
+  text      String
+  username  String
+  timestamp DateTime
+  mention   Mention  @relation(fields: [mentionId], references: [id], onDelete: Cascade)
+}
+
+model CreatorLink {
+  username      String   @id
+  customerId    String
+  displayName   String?
+  email         String?
+  linkedAt      DateTime @default(now())
+  profilePicUrl String?
+}
+
+model VisibleMention {
+  id               String    @id
+  username         String
+  timestamp        DateTime
+  mediaType        String
+  mediaUrl         String
+  thumbnailUrl     String?
+  caption          String?
+  permalink        String
+  category         String    @default("camping")
+  products         String    @default("[]")
+  featured         Boolean   @default(false)
+  featuredAt       DateTime?
+  lastRefreshedAt  DateTime?
+  lastRefreshError String?
+  likeCount        Int       @default(0)
+  commentsCount    Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Product {
+  handle String  @id
+  title  String
+  image  String?
+  link   String?
+  price  Float   @default(0)
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
