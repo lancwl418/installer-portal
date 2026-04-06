@@ -16,9 +16,9 @@ interface Installer {
   status: string;
 }
 
-const statusColorMap: Record<string, "default" | "primary" | "success" | "danger"> = {
+const statusColorMap: Record<string, "default" | "accent" | "success" | "danger"> = {
   applied: "default",
-  approved: "primary",
+  approved: "accent",
   active: "success",
   inactive: "danger",
 };
@@ -60,16 +60,16 @@ export default function ProfilePage() {
       <header className="bg-white border-b px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold">My Profile</h1>
-          <Link href="/portal"><Button variant="light" size="sm">← Back to Portal</Button></Link>
+          <Link href="/portal"><Button variant="ghost" size="sm">← Back to Portal</Button></Link>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto p-6">
-        <Card shadow="sm">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold">{installer.name}</h2>
-              <Chip color={statusColorMap[installer.status]} variant="flat" size="sm">
+              <Chip color={statusColorMap[installer.status]} variant="soft" size="sm">
                 {installer.status}
               </Chip>
             </div>

@@ -90,14 +90,14 @@ function igProxy(url: string) {
 }
 
 const STATUSES = ["applied", "approved", "active", "inactive"];
-const statusColorMap: Record<string, "default" | "primary" | "success" | "danger"> = {
+const statusColorMap: Record<string, "default" | "accent" | "success" | "danger"> = {
   applied: "default",
-  approved: "primary",
+  approved: "accent",
   active: "success",
   inactive: "danger",
 };
 
-const EDITABLE_FIELDS = [
+const EDITABLE_FIELDS: { key: string; label: string; type?: string; multiline?: boolean }[] = [
   { key: "name", label: "Name" },
   { key: "email", label: "Email", type: "email" },
   { key: "phone", label: "Phone" },
@@ -108,7 +108,7 @@ const EDITABLE_FIELDS = [
   { key: "contractDate", label: "Contract Date", type: "date" },
   { key: "customerId", label: "Shopify Customer ID" },
   { key: "notes", label: "Notes", multiline: true },
-] as const;
+];
 
 export default function InstallerDetailPage() {
   const { id } = useParams();
@@ -244,23 +244,23 @@ export default function InstallerDetailPage() {
       <header className="bg-white border-b px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="light" size="sm" onPress={() => router.push("/admin/installers")}>
+            <Button variant="ghost" size="sm" onPress={() => router.push("/admin/installers")}>
               ← Back
             </Button>
             <h1 className="text-xl font-bold">{installer.name}</h1>
-            <Chip color={statusColorMap[installer.status]} variant="flat" size="sm">
+            <Chip color={statusColorMap[installer.status]} variant="soft" size="sm">
               {installer.status}
             </Chip>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="bordered" onPress={openEdit}>
+            <Button size="sm" variant="outline" onPress={openEdit}>
               Edit
             </Button>
             {STATUSES.filter((s) => s !== installer.status).map((s) => (
               <Button
                 key={s}
                 size="sm"
-                variant="bordered"
+                variant="outline"
                 onPress={() => updateStatus(s)}
                 className="capitalize"
               >
@@ -274,7 +274,7 @@ export default function InstallerDetailPage() {
       <main className="max-w-6xl mx-auto p-6">
         {/* Instagram Profile Card */}
         {installer.instagramUsername && (
-          <Card shadow="sm" className="mb-6">
+          <Card className="mb-6">
             <CardContent className="p-6">
               <div className="flex items-center gap-5">
                 {(igProfile?.profile_pic_url_hd || igProfile?.profile_pic_url || creatorLink?.profilePicUrl) ? (
@@ -369,11 +369,11 @@ export default function InstallerDetailPage() {
         )}
 
         {/* Installer Info */}
-        <Card shadow="sm" className="mb-6">
+        <Card className="mb-6">
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">Installer Info</h2>
-              <Button size="sm" variant="light" onPress={openEdit}>Edit</Button>
+              <Button size="sm" variant="ghost" onPress={openEdit}>Edit</Button>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {infoFields.map((f) => (
@@ -523,8 +523,8 @@ export default function InstallerDetailPage() {
                   {editError && <p className="text-danger text-sm">{editError}</p>}
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={editModal.close}>Cancel</Button>
-                  <Button type="submit" variant="solid" isDisabled={saving}>
+                  <Button variant="ghost" onPress={editModal.close}>Cancel</Button>
+                  <Button type="submit" variant="primary" isDisabled={saving}>
                     {saving ? "Saving..." : "Save Changes"}
                   </Button>
                 </ModalFooter>

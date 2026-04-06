@@ -52,12 +52,12 @@ export default function UploadPage() {
       <header className="bg-white border-b px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold">Upload Media</h1>
-          <Link href="/portal"><Button variant="light" size="sm">← Back to Portal</Button></Link>
+          <Link href="/portal"><Button variant="ghost" size="sm">← Back to Portal</Button></Link>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto p-6">
-        <Card shadow="sm">
+        <Card>
           <CardHeader className="pb-0 px-6 pt-6">
             <h2 className="font-semibold">Select files to upload</h2>
           </CardHeader>
@@ -103,7 +103,7 @@ export default function UploadPage() {
 
               <Button
                 type="submit"
-                variant="solid"
+                variant="primary"
                 isDisabled={files.length === 0 || uploading}
                 fullWidth
               >

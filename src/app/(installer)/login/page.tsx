@@ -63,7 +63,7 @@ export default function InstallerLoginPage() {
             {error && <p className="text-danger text-sm">{error}</p>}
             <Button
               type="submit"
-              variant="solid"
+              variant="primary"
               isDisabled={loading}
               className="mt-2"
               fullWidth

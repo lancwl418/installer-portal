@@ -64,10 +64,10 @@ export default function PortalPage() {
           </div>
           <div className="flex gap-3">
             <Link href="/portal/upload">
-              <Button variant="solid" size="sm">Upload Media</Button>
+              <Button variant="primary" size="sm">Upload Media</Button>
             </Link>
             <Link href="/portal/profile">
-              <Button variant="bordered" size="sm">Profile</Button>
+              <Button variant="outline" size="sm">Profile</Button>
             </Link>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function PortalPage() {
             { label: "Pending Review", value: pending, color: "warning" as const },
             { label: "Approved", value: approved, color: "success" as const },
           ].map((s) => (
-            <Card key={s.label} shadow="sm">
+            <Card key={s.label}>
               <CardContent className="text-center py-5">
                 <p className="text-sm text-default-500">{s.label}</p>
                 <p className="text-3xl font-bold mt-1">{s.value}</p>
@@ -91,18 +91,18 @@ export default function PortalPage() {
 
         <h2 className="text-lg font-semibold mb-4">Your Uploads</h2>
         {uploads.length === 0 ? (
-          <Card shadow="sm">
+          <Card>
             <CardContent className="text-center py-8">
               <p className="text-default-400">No uploads yet.</p>
               <Link href="/portal/upload">
-                <Button variant="flat" className="mt-3">Upload your first media</Button>
+                <Button variant="secondary" className="mt-3">Upload your first media</Button>
               </Link>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {uploads.map((u) => (
-              <Card key={u.id} shadow="sm">
+              <Card key={u.id}>
                 <div className="h-48 bg-gray-100">
                   {u.fileType === "video" ? (
                     <video src={u.fileUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
@@ -114,7 +114,7 @@ export default function PortalPage() {
                   <div className="flex items-center justify-between">
                     <Chip
                       size="sm"
-                      variant="flat"
+                      variant="secondary"
                       color={u.status === "approved" ? "success" : u.status === "rejected" ? "danger" : "warning"}
                     >
                       {u.status}
