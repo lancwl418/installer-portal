@@ -12,6 +12,7 @@ interface InstallerProfile {
   email: string;
   phone: string | null;
   instagramUsername: string | null;
+  avatarUrl: string | null;
   region: string | null;
   serviceArea: string | null;
   specialties: string | null;
@@ -185,7 +186,16 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold">{installer.name}</h2>
+                  <div className="flex items-center gap-4">
+                    {installer.avatarUrl ? (
+                      <img src={installer.avatarUrl} alt={installer.name} className="w-16 h-16 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-400">
+                        {installer.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                      </div>
+                    )}
+                    <h2 className="text-lg font-semibold">{installer.name}</h2>
+                  </div>
                   <div className="flex items-center gap-3">
                     <Chip color={statusColorMap[installer.status]} variant="soft" size="sm">
                       {installer.status}

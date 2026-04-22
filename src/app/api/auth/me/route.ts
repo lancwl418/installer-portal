@@ -19,6 +19,7 @@ export async function GET() {
       region: true,
       serviceArea: true,
       status: true,
+      avatarUrl: true,
     },
   });
 

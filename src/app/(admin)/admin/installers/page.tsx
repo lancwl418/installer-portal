@@ -15,6 +15,7 @@ interface Installer {
   name: string;
   email: string;
   instagramUsername: string | null;
+  avatarUrl: string | null;
   status: string;
   region: string | null;
   createdAt: string;
@@ -41,6 +42,7 @@ export default function AdminInstallersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [syncing, setSyncing] = useState(false);
   const modalState = useOverlayState();
   const router = useRouter();
 
@@ -94,6 +96,22 @@ export default function AdminInstallersPage() {
           <p className="text-sm text-gray-500 mt-1">Manage installer accounts and applications</p>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={async () => {
+              setSyncing(true);
+              try {
+                const res = await fetch("/api/admin/installers/sync-creators", { method: "POST" });
+                const data = await res.json();
+                alert(`Synced ${data.synced} of ${data.total} installers`);
+                loadInstallers();
+              } catch { alert("Sync failed"); }
+              finally { setSyncing(false); }
+            }}
+            disabled={syncing}
+            className="px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition flex items-center gap-2 disabled:opacity-50"
+          >
+            {syncing ? "Syncing..." : "Sync Creators"}
+          </button>
           <button
             onClick={modalState.open}
             className="px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition flex items-center gap-2"
@@ -177,9 +195,13 @@ export default function AdminInstallersPage() {
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-500 flex-shrink-0">
-                        {inst.name.charAt(0).toUpperCase()}
-                      </div>
+                      {inst.avatarUrl ? (
+                        <img src={inst.avatarUrl} alt={inst.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-500 flex-shrink-0">
+                          {inst.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm font-medium text-gray-900">{inst.name}</p>
                         <p className="text-xs text-gray-400">{inst.email}</p>
