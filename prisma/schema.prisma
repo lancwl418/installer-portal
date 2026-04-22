@@ -24,6 +24,29 @@ model Installer {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   uploads           InstallerUpload[]
+
+  // --- Find Installer fields ---
+  avatarUrl         String?
+  bio               String?
+  zipCode           String?
+  rating            Float             @default(0)
+  reviewCount       Int               @default(0)
+  startingPrice     Int?
+  supportedProducts String[]          @default([])
+  vehicleTypes      String[]          @default([])
+  installTypes      String[]          @default([])
+  tags              String[]          @default([])
+  hasHardwire       Boolean           @default(false)
+  hasMultiCamera    Boolean           @default(false)
+  hasJeepExperience Boolean           @default(false)
+  offersMobile      Boolean           @default(false)
+  offersShop        Boolean           @default(false)
+  availableThisWeek Boolean           @default(false)
+  weekendAvailable  Boolean           @default(false)
+  fastResponse      Boolean           @default(false)
+  customerQuote     String?
+  facts             String[]          @default([])
+  completedInstalls Int               @default(0)
 }
 
 model InstallerUpload {
