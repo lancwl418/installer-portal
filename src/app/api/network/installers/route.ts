@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       break;
   }
 
-  const installers = await prisma.installer.findMany({
+  const rawInstallers = await prisma.installer.findMany({
     where,
     orderBy,
     select: {
@@ -95,6 +95,7 @@ export async function GET(req: NextRequest) {
       facts: true,
       completedInstalls: true,
       region: true,
+      instagramUsername: true,
       uploads: {
         where: { status: "approved" },
         select: {
@@ -107,6 +108,49 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
       },
     },
+  });
+
+  // For installers with Instagram usernames, fetch UGC mentions as media
+  const igUsernames = rawInstallers
+    .filter((i) => i.instagramUsername && i.uploads.length < 4)
+    .map((i) => i.instagramUsername!);
+
+  let mentionsByUsername: Record<string, { id: string; mediaUrl: string; mediaType: string; caption: string | null }[]> = {};
+  if (igUsernames.length > 0) {
+    const mentions = await prisma.mention.findMany({
+      where: { username: { in: igUsernames } },
+      select: {
+        id: true,
+        username: true,
+        mediaUrl: true,
+        mediaType: true,
+        caption: true,
+      },
+      orderBy: { timestamp: "desc" },
+      take: igUsernames.length * 4,
+    });
+    for (const m of mentions) {
+      if (!mentionsByUsername[m.username]) mentionsByUsername[m.username] = [];
+      if (mentionsByUsername[m.username].length < 4) {
+        mentionsByUsername[m.username].push(m);
+      }
+    }
+  }
+
+  // Merge: use uploads first, fill remaining slots with UGC mentions
+  const installers = rawInstallers.map(({ instagramUsername, ...rest }) => {
+    const uploads = [...rest.uploads];
+    if (uploads.length < 4 && instagramUsername && mentionsByUsername[instagramUsername]) {
+      const remaining = 4 - uploads.length;
+      const ugcMedia = mentionsByUsername[instagramUsername].slice(0, remaining).map((m) => ({
+        id: m.id,
+        fileUrl: m.mediaUrl,
+        fileType: m.mediaType === "VIDEO" ? "video" : "image",
+        caption: m.caption ? m.caption.slice(0, 80) : null,
+      }));
+      uploads.push(...ugcMedia);
+    }
+    return { ...rest, uploads };
   });
 
   // For "recommended" sort, do a secondary sort by weighted score
