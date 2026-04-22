@@ -24,9 +24,9 @@ export async function GET(req: NextRequest) {
   const fWeek = params.get("week") === "1";
   const fWeekend = params.get("weekend") === "1";
 
-  // Build where clause — only show active installers
+  // Build where clause — show active and approved installers
   const where: Prisma.InstallerWhereInput = {
-    status: "active",
+    status: { in: ["active", "approved"] },
   };
 
   if (product !== "all") {
