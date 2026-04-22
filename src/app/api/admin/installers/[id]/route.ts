@@ -58,17 +58,49 @@ export async function PATCH(
   const data = await req.json();
 
   // Only allow updating specific fields
-  const allowed = [
+  const stringFields = [
     "name", "phone", "instagramUsername", "region",
-    "serviceArea", "specialties", "status", "contractDate",
-    "notes", "customerId",
+    "serviceArea", "specialties", "status",
+    "notes", "customerId", "bio", "zipCode", "customerQuote", "avatarUrl",
   ];
+  const intFields = ["startingPrice", "completedInstalls", "reviewCount"];
+  const floatFields = ["rating"];
+  const arrayFields = [
+    "supportedProducts", "vehicleTypes", "installTypes", "tags", "facts",
+  ];
+  const boolFields = [
+    "hasHardwire", "hasMultiCamera", "hasJeepExperience",
+    "offersMobile", "offersShop", "availableThisWeek",
+    "weekendAvailable", "fastResponse",
+  ];
+
   const update: Record<string, unknown> = {};
-  for (const key of allowed) {
+  for (const key of stringFields) {
     if (key in data) {
-      update[key] = key === "contractDate" && data[key]
-        ? new Date(data[key])
-        : data[key];
+      update[key] = data[key] || null;
+    }
+  }
+  if ("contractDate" in data) {
+    update.contractDate = data.contractDate ? new Date(data.contractDate) : null;
+  }
+  for (const key of intFields) {
+    if (key in data) {
+      update[key] = data[key] != null ? Number(data[key]) : null;
+    }
+  }
+  for (const key of floatFields) {
+    if (key in data) {
+      update[key] = data[key] != null ? Number(data[key]) : 0;
+    }
+  }
+  for (const key of arrayFields) {
+    if (key in data) {
+      update[key] = Array.isArray(data[key]) ? data[key] : [];
+    }
+  }
+  for (const key of boolFields) {
+    if (key in data) {
+      update[key] = Boolean(data[key]);
     }
   }
 

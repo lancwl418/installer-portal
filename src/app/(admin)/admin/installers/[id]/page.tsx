@@ -11,6 +11,7 @@ import {
   ModalHeader, ModalBody, ModalFooter,
   useOverlayState,
 } from "@heroui/react";
+import { PRODUCTS, VEHICLES, INSTALL_TYPES } from "@/lib/network";
 
 interface Upload {
   id: string;
@@ -83,6 +84,27 @@ interface InstallerDetail {
   customerId: string | null;
   createdAt: string;
   uploads: Upload[];
+  // Find Installer fields
+  bio: string | null;
+  zipCode: string | null;
+  rating: number;
+  reviewCount: number;
+  startingPrice: number | null;
+  supportedProducts: string[];
+  vehicleTypes: string[];
+  installTypes: string[];
+  tags: string[];
+  hasHardwire: boolean;
+  hasMultiCamera: boolean;
+  hasJeepExperience: boolean;
+  offersMobile: boolean;
+  offersShop: boolean;
+  availableThisWeek: boolean;
+  weekendAvailable: boolean;
+  fastResponse: boolean;
+  customerQuote: string | null;
+  facts: string[];
+  completedInstalls: number;
 }
 
 function igProxy(url: string) {
@@ -104,10 +126,28 @@ const EDITABLE_FIELDS: { key: string; label: string; type?: string; multiline?: 
   { key: "instagramUsername", label: "Instagram Username" },
   { key: "region", label: "Region" },
   { key: "serviceArea", label: "Service Area" },
+  { key: "zipCode", label: "ZIP Code" },
   { key: "specialties", label: "Specialties" },
+  { key: "startingPrice", label: "Starting Price ($)", type: "number" },
+  { key: "rating", label: "Rating (0-5)", type: "number" },
+  { key: "reviewCount", label: "Review Count", type: "number" },
+  { key: "completedInstalls", label: "Completed Installs", type: "number" },
   { key: "contractDate", label: "Contract Date", type: "date" },
   { key: "customerId", label: "Shopify Customer ID" },
-  { key: "notes", label: "Notes", multiline: true },
+  { key: "bio", label: "Bio / Description", multiline: true },
+  { key: "customerQuote", label: "Customer Quote", multiline: true },
+  { key: "notes", label: "Admin Notes", multiline: true },
+];
+
+const BOOL_FIELDS: { key: string; label: string }[] = [
+  { key: "hasHardwire", label: "Hardwire experience" },
+  { key: "hasMultiCamera", label: "Multi-camera setup" },
+  { key: "hasJeepExperience", label: "Jeep / Off-road" },
+  { key: "offersMobile", label: "Mobile service" },
+  { key: "offersShop", label: "Shop service" },
+  { key: "availableThisWeek", label: "Available this week" },
+  { key: "weekendAvailable", label: "Weekend available" },
+  { key: "fastResponse", label: "Fast response" },
 ];
 
 export default function InstallerDetailPage() {
@@ -123,7 +163,7 @@ export default function InstallerDetailPage() {
 
   // Edit state
   const editModal = useOverlayState();
-  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editForm, setEditForm] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
@@ -162,10 +202,31 @@ export default function InstallerDetailPage() {
       instagramUsername: installer.instagramUsername || "",
       region: installer.region || "",
       serviceArea: installer.serviceArea || "",
+      zipCode: installer.zipCode || "",
       specialties: installer.specialties || "",
+      startingPrice: installer.startingPrice != null ? String(installer.startingPrice) : "",
+      rating: String(installer.rating || 0),
+      reviewCount: String(installer.reviewCount || 0),
+      completedInstalls: String(installer.completedInstalls || 0),
       contractDate: installer.contractDate ? installer.contractDate.split("T")[0] : "",
       customerId: installer.customerId || "",
+      bio: installer.bio || "",
+      customerQuote: installer.customerQuote || "",
       notes: installer.notes || "",
+      // boolean and array fields
+      hasHardwire: installer.hasHardwire,
+      hasMultiCamera: installer.hasMultiCamera,
+      hasJeepExperience: installer.hasJeepExperience,
+      offersMobile: installer.offersMobile,
+      offersShop: installer.offersShop,
+      availableThisWeek: installer.availableThisWeek,
+      weekendAvailable: installer.weekendAvailable,
+      fastResponse: installer.fastResponse,
+      supportedProducts: [...(installer.supportedProducts || [])],
+      vehicleTypes: [...(installer.vehicleTypes || [])],
+      installTypes: [...(installer.installTypes || [])],
+      tags: (installer.tags || []).join(", "),
+      facts: (installer.facts || []).join(", "),
     });
     setEditError("");
     editModal.open();
@@ -176,11 +237,32 @@ export default function InstallerDetailPage() {
     setSaving(true);
     setEditError("");
     try {
-      const payload: Record<string, string | null> = {};
+      const payload: Record<string, unknown> = {};
+      // String fields
       for (const field of EDITABLE_FIELDS) {
-        const val = editForm[field.key]?.trim() || "";
-        payload[field.key] = val || null;
+        const val = typeof editForm[field.key] === "string" ? (editForm[field.key] as string).trim() : "";
+        if (field.type === "number") {
+          payload[field.key] = val ? Number(val) : null;
+        } else {
+          payload[field.key] = val || null;
+        }
       }
+      // Boolean fields
+      for (const bf of BOOL_FIELDS) {
+        payload[bf.key] = Boolean(editForm[bf.key]);
+      }
+      // Array fields (multi-select)
+      payload.supportedProducts = editForm.supportedProducts || [];
+      payload.vehicleTypes = editForm.vehicleTypes || [];
+      payload.installTypes = editForm.installTypes || [];
+      // Comma-separated → array
+      payload.tags = typeof editForm.tags === "string"
+        ? editForm.tags.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : editForm.tags || [];
+      payload.facts = typeof editForm.facts === "string"
+        ? editForm.facts.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : editForm.facts || [];
+
       const res = await fetch(`/api/admin/installers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -226,13 +308,21 @@ export default function InstallerDetailPage() {
     );
   }
 
+  const productLabels = Object.fromEntries(PRODUCTS.filter((p) => p.value !== "all").map((p) => [p.value, p.label]));
+  const vehicleLabels = Object.fromEntries(VEHICLES.filter((v) => v.value !== "all").map((v) => [v.value, v.label]));
+  const installTypeLabels = Object.fromEntries(INSTALL_TYPES.filter((t) => t.value !== "all").map((t) => [t.value, t.label]));
+
   const infoFields = [
     { label: "Email", value: installer.email },
     { label: "Phone", value: installer.phone },
     { label: "Instagram", value: installer.instagramUsername ? `@${installer.instagramUsername}` : null },
     { label: "Region", value: installer.region },
     { label: "Service Area", value: installer.serviceArea },
+    { label: "ZIP Code", value: installer.zipCode },
     { label: "Specialties", value: installer.specialties },
+    { label: "Starting Price", value: installer.startingPrice != null ? `$${installer.startingPrice}` : null },
+    { label: "Rating", value: installer.rating ? `${installer.rating} / 5 (${installer.reviewCount} reviews)` : null },
+    { label: "Completed Installs", value: installer.completedInstalls || null },
     { label: "Contract Date", value: installer.contractDate ? new Date(installer.contractDate).toLocaleDateString() : null },
     { label: "Shopify Customer ID", value: installer.customerId },
     { label: "Notes", value: installer.notes },
@@ -383,6 +473,81 @@ export default function InstallerDetailPage() {
                 </div>
               ))}
             </div>
+
+            {/* Bio */}
+            {installer.bio && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm text-default-400 mb-1">Bio</p>
+                <p className="text-sm">{installer.bio}</p>
+              </div>
+            )}
+
+            {/* Products / Vehicles / Install Types */}
+            <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-default-400 mb-2">Supported Products</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {installer.supportedProducts?.length > 0
+                    ? installer.supportedProducts.map((p) => (
+                        <Chip key={p} size="sm" variant="soft">{productLabels[p] || p}</Chip>
+                      ))
+                    : <span className="text-sm text-default-400">—</span>}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-default-400 mb-2">Vehicle Types</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {installer.vehicleTypes?.length > 0
+                    ? installer.vehicleTypes.map((v) => (
+                        <Chip key={v} size="sm" variant="soft">{vehicleLabels[v] || v}</Chip>
+                      ))
+                    : <span className="text-sm text-default-400">—</span>}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-default-400 mb-2">Install Types</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {installer.installTypes?.length > 0
+                    ? installer.installTypes.map((t) => (
+                        <Chip key={t} size="sm" variant="soft">{installTypeLabels[t] || t}</Chip>
+                      ))
+                    : <span className="text-sm text-default-400">—</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Capabilities */}
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-sm text-default-400 mb-2">Capabilities & Service</p>
+              <div className="flex flex-wrap gap-1.5">
+                {BOOL_FIELDS.filter((bf) => (installer as unknown as Record<string, boolean>)[bf.key]).map((bf) => (
+                  <Chip key={bf.key} size="sm" variant="soft" color="success">{bf.label}</Chip>
+                ))}
+                {BOOL_FIELDS.every((bf) => !(installer as unknown as Record<string, boolean>)[bf.key]) && (
+                  <span className="text-sm text-default-400">—</span>
+                )}
+              </div>
+            </div>
+
+            {/* Tags */}
+            {installer.tags?.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm text-default-400 mb-2">Tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {installer.tags.map((t) => (
+                    <Chip key={t} size="sm" variant="soft" color="accent">{t}</Chip>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Customer Quote */}
+            {installer.customerQuote && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm text-default-400 mb-1">Customer Quote</p>
+                <p className="text-sm italic border-l-2 border-orange-400 pl-3">&ldquo;{installer.customerQuote}&rdquo;</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -499,13 +664,13 @@ export default function InstallerDetailPage() {
             <ModalDialog>
               <form onSubmit={handleSave}>
                 <ModalHeader>Edit Installer</ModalHeader>
-                <ModalBody className="gap-3">
+                <ModalBody className="gap-3 max-h-[70vh] overflow-y-auto">
                   {EDITABLE_FIELDS.map((f) =>
                     f.multiline ? (
                       <TextField key={f.key}>
                         <Label>{f.label}</Label>
                         <TextArea
-                          value={editForm[f.key] || ""}
+                          value={String(editForm[f.key] ?? "")}
                           onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
                         />
                       </TextField>
@@ -514,12 +679,127 @@ export default function InstallerDetailPage() {
                         <Label>{f.label}</Label>
                         <Input
                           type={f.type || "text"}
-                          value={editForm[f.key] || ""}
+                          value={String(editForm[f.key] ?? "")}
                           onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
                         />
                       </TextField>
                     )
                   )}
+
+                  {/* Supported Products */}
+                  <div>
+                    <p className="text-sm font-medium mb-2">Supported Products</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PRODUCTS.filter((p) => p.value !== "all").map((p) => {
+                        const arr = (editForm.supportedProducts as string[]) || [];
+                        const selected = arr.includes(p.value);
+                        return (
+                          <button
+                            key={p.value}
+                            type="button"
+                            onClick={() => setEditForm({
+                              ...editForm,
+                              supportedProducts: selected ? arr.filter((v) => v !== p.value) : [...arr, p.value],
+                            })}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                              selected ? "bg-orange-50 border-orange-300 text-orange-700" : "bg-white border-gray-200 text-gray-500"
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Vehicle Types */}
+                  <div>
+                    <p className="text-sm font-medium mb-2">Vehicle Types</p>
+                    <div className="flex flex-wrap gap-2">
+                      {VEHICLES.filter((v) => v.value !== "all").map((v) => {
+                        const arr = (editForm.vehicleTypes as string[]) || [];
+                        const selected = arr.includes(v.value);
+                        return (
+                          <button
+                            key={v.value}
+                            type="button"
+                            onClick={() => setEditForm({
+                              ...editForm,
+                              vehicleTypes: selected ? arr.filter((x) => x !== v.value) : [...arr, v.value],
+                            })}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                              selected ? "bg-orange-50 border-orange-300 text-orange-700" : "bg-white border-gray-200 text-gray-500"
+                            }`}
+                          >
+                            {v.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Install Types */}
+                  <div>
+                    <p className="text-sm font-medium mb-2">Install Types</p>
+                    <div className="flex flex-wrap gap-2">
+                      {INSTALL_TYPES.filter((t) => t.value !== "all").map((t) => {
+                        const arr = (editForm.installTypes as string[]) || [];
+                        const selected = arr.includes(t.value);
+                        return (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => setEditForm({
+                              ...editForm,
+                              installTypes: selected ? arr.filter((x) => x !== t.value) : [...arr, t.value],
+                            })}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                              selected ? "bg-orange-50 border-orange-300 text-orange-700" : "bg-white border-gray-200 text-gray-500"
+                            }`}
+                          >
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Tags & Facts (comma-separated) */}
+                  <TextField>
+                    <Label>Tags (comma-separated)</Label>
+                    <Input
+                      value={String(editForm.tags ?? "")}
+                      onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                      placeholder="e.g. Acumen Compatible, Hardwire Expert"
+                    />
+                  </TextField>
+                  <TextField>
+                    <Label>Facts (comma-separated)</Label>
+                    <Input
+                      value={String(editForm.facts ?? "")}
+                      onChange={(e) => setEditForm({ ...editForm, facts: e.target.value })}
+                      placeholder="e.g. 120 installs completed, 5 years in business"
+                    />
+                  </TextField>
+
+                  {/* Boolean toggles */}
+                  <div>
+                    <p className="text-sm font-medium mb-2">Capabilities & Availability</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {BOOL_FIELDS.map((bf) => (
+                        <label key={bf.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editForm[bf.key] as boolean || false}
+                            onChange={(e) => setEditForm({ ...editForm, [bf.key]: e.target.checked })}
+                            className="accent-orange-500"
+                          />
+                          {bf.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   {editError && <p className="text-danger text-sm">{editError}</p>}
                 </ModalBody>
                 <ModalFooter>
